@@ -6,7 +6,13 @@ import com.rpg.exceptions.VidaInsuficienteException;
 
 import java.util.Random;
 
-/** Reglas de un combate: ataques, habilidades, efectos al inicio del turno y duelos automaticos. */
+/**
+ * Reglas de un combate: ataques, habilidades, aturdimiento al inicio del turno y duelos automaticos.
+ * <p>
+ * TALLER CONCURRENCIA: en el torneo dos duelos corren a la vez sobre esta misma Arena (uno por semifinal).
+ * Es segura para eso porque no guarda estado propio del combate: {@link Random} es thread-safe, el
+ * {@link RegistroCombate} esta sincronizado y cada Personaje protege su propia vida.
+ */
 public class Arena {
 
     private static final int PROBABILIDAD_CRITICO = 15;
@@ -14,21 +20,29 @@ public class Arena {
     private static final int VARIACION_DANIO = 3;
     private static final int PROBABILIDAD_ESPECIAL_IA = 35;
     private static final int MAXIMO_RONDAS = 40;
+    /** Pausa entre turnos de un duelo automatico, para que los efectos (hilos) tengan tiempo de actuar. */
+    public static final long PAUSA_DUELO_MS = 250;
 
     private final RegistroCombate registro;
     private final Random azar;
+    private final long pausaDueloMs;
 
     public Arena(RegistroCombate registro, Random azar) {
-        this.registro = registro;
-        this.azar = azar;
+        this(registro, azar, PAUSA_DUELO_MS);
     }
 
-    /** Procesa efectos y aturdimiento. @return true si el personaje puede actuar este turno */
+    public Arena(RegistroCombate registro, Random azar, long pausaDueloMs) {
+        this.registro = registro;
+        this.azar = azar;
+        this.pausaDueloMs = pausaDueloMs;
+    }
+
+    /** Hook de turno y aturdimiento. @return true si el personaje puede actuar este turno */
     public boolean iniciarTurno(Personaje personaje) {
         personaje.alIniciarTurno();
-        for (String mensaje : personaje.procesarEfectos()) {
-            registro.agregar(mensaje);
-        }
+        // TALLER CONCURRENCIA (resuelto): los efectos DoT/HoT ya no se procesan aqui turno a turno. Cada uno
+        // corre en su propio hilo (EfectoContinuoTask) desde que se aplica, asi que aqui solo se comprueba si
+        // alguno de ellos derribo al personaje mientras tanto.
         if (!personaje.estaVivo()) {
             registro.agregar("%s cae derrotado por sus efectos", personaje.getNombre());
             return false;
@@ -75,13 +89,34 @@ public class Arena {
         atacar(atacante, defensor);
     }
 
-    /** Pelea hasta que uno cae (o se acaban las rondas). @return el ganador */
+    /**
+     * Pelea hasta que uno cae (o se acaban las rondas). Se detiene tambien si el hilo que la ejecuta es
+     * interrumpido. Al terminar se cancelan los hilos de efectos de ambos para que no sigan actuando.
+     * @return el ganador
+     */
     public Personaje duelo(Personaje a, Personaje b) {
-        for (int ronda = 1; ronda <= MAXIMO_RONDAS && a.estaVivo() && b.estaVivo(); ronda++) {
+        for (int ronda = 1; ronda <= MAXIMO_RONDAS && a.estaVivo() && b.estaVivo()
+                && !Thread.currentThread().isInterrupted(); ronda++) {
             registro.agregar("-- Ronda %d --", ronda);
             turnoAutomatico(a, b);
+            pausar();
             turnoAutomatico(b, a);
+            pausar();
         }
+        a.detenerEfectos();
+        b.detenerEfectos();
         return a.getVida() >= b.getVida() ? a : b;
+    }
+
+    private void pausar() {
+        if (pausaDueloMs <= 0) {
+            return;
+        }
+        try {
+            Thread.sleep(pausaDueloMs); // aqui el hilo de la semifinal pasa a TIMED_WAITING
+        } catch (InterruptedException e) {
+            // Cancelaron el duelo: restauramos la bandera; el for de duelo() la consulta y termina.
+            Thread.currentThread().interrupt();
+        }
     }
 }

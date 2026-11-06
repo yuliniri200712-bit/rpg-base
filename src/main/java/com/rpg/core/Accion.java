@@ -6,5 +6,7 @@ public enum Accion {
     ESPECIAL,
     POCION,
     ESTADO,
-    HUIR
+    HUIR,
+    /** TALLER CONCURRENCIA: no la elige el jugador; la produce el temporizador cuando se agota el tiempo. */
+    TIEMPO_AGOTADO
 }

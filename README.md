@@ -284,3 +284,9 @@ Este proyecto sigue la guia del taller, con estas diferencias a proposito:
 - Los mensajes de consola no llevan tildes a proposito, para que se vean bien en cualquier terminal.
 - Para repetir el juego con resultados distintos no hay semilla fija: el azar (criticos, habilidades de los
   enemigos) cambia en cada ejecucion.
+
+## Solucion del taller
+
+La actividad de los talleres de **Concurrencia** y **Manejo de Archivos** esta resuelta en este proyecto.
+En [SOLUCION.md](SOLUCION.md) se explica, punto por punto de ambos checklists, que se hizo, donde esta en el
+codigo y como se comprobo (incluidas las investigaciones obligatorias y los programas de demostracion).

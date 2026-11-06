@@ -9,7 +9,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Catalogo de monstruos (Map nombre -> plantilla) y contador de derrotas por monstruo. */
+/**
+ * Catalogo de monstruos (Map nombre -> plantilla) y contador de derrotas por monstruo.
+ * TALLER CONCURRENCIA: los metodos que tocan el contador son synchronized porque el daemon de auto-guardado
+ * lo lee desde otro hilo. TALLER ARCHIVOS: el contador se guarda y se restaura con la partida.
+ */
 public class Bestiario {
 
     private final Map<String, Enemigo> catalogo = new LinkedHashMap<>();
@@ -42,15 +46,15 @@ public class Bestiario {
         return null;
     }
 
-    public void registrarEnemigoDerrotado(String nombre) {
+    public synchronized void registrarEnemigoDerrotado(String nombre) {
         derrotados.put(nombre, derrotados.getOrDefault(nombre, 0) + 1);
     }
 
-    public int vecesDerrotado(String nombre) {
+    public synchronized int vecesDerrotado(String nombre) {
         return derrotados.getOrDefault(nombre, 0);
     }
 
-    public String describir() {
+    public synchronized String describir() {
         StringBuilder texto = new StringBuilder();
         int numero = 1;
         for (Map.Entry<String, Enemigo> entrada : catalogo.entrySet()) {
@@ -62,10 +66,23 @@ public class Bestiario {
         return texto.toString();
     }
 
-    public String resumenDerrotados() {
+    public synchronized String resumenDerrotados() {
         if (derrotados.isEmpty()) {
             return "ninguno";
         }
         return derrotados.toString();
+    }
+
+    /** Copia del contador de derrotas (para guardarla en la partida). */
+    public synchronized Map<String, Integer> getDerrotados() {
+        return new LinkedHashMap<>(derrotados);
+    }
+
+    /** Reemplaza el contador de derrotas por el de una partida cargada. */
+    public synchronized void restaurarDerrotados(Map<String, Integer> guardados) {
+        derrotados.clear();
+        if (guardados != null) {
+            derrotados.putAll(guardados);
+        }
     }
 }

@@ -2,8 +2,15 @@ package com.rpg.entities;
 
 import com.rpg.entities.enums.RaridadItem;
 
-// TALLER ARCHIVOS: candidata a Serializable (la referencia desde Personaje.arma la necesita).
-public class Arma {
+import java.io.Serial;
+import java.io.Serializable;
+
+// TALLER ARCHIVOS (resuelto): Serializable porque Personaje.arma la referencia. Si no lo fuera, guardar un
+// Personaje con arma lanzaria NotSerializableException: com.rpg.entities.Arma.
+public class Arma implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     private final String nombre;
     private final int danioBase;

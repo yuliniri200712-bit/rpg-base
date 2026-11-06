@@ -1,10 +1,15 @@
 package com.rpg.entities;
 
+import java.io.Serial;
+
 import com.rpg.entities.enums.RaridadItem;
 import com.rpg.entities.enums.TipoPersonaje;
 import com.rpg.exceptions.VidaInsuficienteException;
 
 public class Guerrero extends Personaje {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     private static final int VIDA = 120;
     private static final int ATAQUE = 18;
